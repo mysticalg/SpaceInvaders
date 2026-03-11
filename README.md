@@ -45,6 +45,16 @@ Scores are stored using `localStorage` key `galaxionRetroHighScoresV1`.
 
 This means scores are retained across page refreshes and browser restarts on the same browser profile.
 
+## GitHub Pages deployment
+
+This repo now deploys automatically to GitHub Pages from the `main` branch using a two-job workflow (`build` + `deploy`).
+
+If you saw deployment errors before, make sure repository settings are configured as:
+
+- **Settings → Pages → Build and deployment → Source:** `GitHub Actions`
+
+Workflow file: `.github/workflows/build.yml`
+
 ## CI build workflow
 
 A GitHub Action is included to validate the project on each push to `main`:
