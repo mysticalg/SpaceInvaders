@@ -1,0 +1,32 @@
+name: Build Galaxion Retro
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+      uses: actions/checkout@v4
+
+      - name: Validate required files
+        run: |
+          test -f index.html
+          test -f styles.css
+          test -f game.js
+          test -f README.md
+
+      - name: Package static site
+        run: |
+          mkdir -p dist
+          cp index.html styles.css game.js README.md dist/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: galaxion-retro-site
+          path: dist
