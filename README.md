@@ -8,7 +8,8 @@ A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure
 - Fluid movement and shooting at 60fps with `requestAnimationFrame`.
 - Polished retro HUD with score, wave, lives, shield %, active weapon, bombs, enemies left, and next extra life target.
 - Multi-layer parallax backdrop with stars, galaxies, and drifting planets.
-- Animated enemies with 360° spin, coordinated dive attacks, and varied movement patterns (sine, spiral, arc).
+- Animated enemies with 360° spin, staged formation entries, and attack patterns (arcs, circles, and sine runs).
+- Wave-window pressure system: each wave has a countdown and surviving enemies fly away when time expires.
 - Expanded weapon system with selectable loadouts:
   - Pulse
   - Spread
@@ -36,6 +37,7 @@ A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure
 - **Bomb:** B
 - **Cycle Weapon:** Q / E
 - **Pause:** P
+- **Wave goal:** destroy enemies before they complete attack runs and escape
 - **Start:** Enter
 
 ## Run locally
