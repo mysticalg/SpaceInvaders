@@ -12,7 +12,9 @@
         <div class="hud-item" title="Current score">🏆 SCORE: <span id="score">0</span></div>
         <div class="hud-item" title="Current wave difficulty">🌌 WAVE: <span id="wave">1</span></div>
         <div class="hud-item" title="Remaining lives">❤️ LIVES: <span id="lives">3</span></div>
-        <div class="hud-item" title="Temporary power-up">⚡ POWER: <span id="power">NONE</span></div>
+        <div class="hud-item" title="Shield energy percentage">🛡️ SHIELD: <span id="shield">100%</span></div>
+        <div class="hud-item" title="Current weapon mode">🔫 WEAPON: <span id="weapon">PULSE</span></div>
+        <div class="hud-item" title="EMP bombs available">💣 BOMBS: <span id="bombs">2</span></div>
         <div class="hud-item" title="How many invaders remain this wave">👾 ENEMIES: <span id="enemiesLeft">0</span></div>
         <div class="hud-item" title="Points needed for next bonus life">🎁 NEXT LIFE: <span id="nextLife">15000</span></div>
       </header>
@@ -26,6 +28,8 @@
           <ul>
             <li>🕹️ Move: <strong>Arrow Keys / A,D</strong></li>
             <li>💥 Fire: <strong>Space</strong></li>
+            <li>💣 Bomb: <strong>B</strong></li>
+            <li>🔁 Cycle Weapon: <strong>Q / E</strong></li>
             <li>⏸️ Pause: <strong>P</strong></li>
             <li>🎯 Start: <strong>Enter</strong></li>
           </ul>
@@ -55,13 +59,15 @@
         <section class="help-panel" aria-label="Power-up legend and gameplay tips">
           <h3>🧭 PILOT HELP</h3>
           <ul>
-            <li title="Absorbs damage for 10 seconds">🛡️ Shield capsule = temporary invulnerability</li>
-            <li title="Increases firing frequency">⚡ Rapid capsule = faster shots</li>
-            <li title="Fires spread bullets">🔱 Multi capsule = 3-way shots</li>
-            <li title="Immediately adds one life">❤️ Life capsule = +1 life</li>
+            <li title="Restores shield energy">🛡️ Shield Core = +40% shield energy</li>
+            <li title="Increases firing frequency">⚡ Rapid Core = faster firing cooldown</li>
+            <li title="Unlocks spread shots">🔱 Multi Core = spread pattern boost</li>
+            <li title="Gives bomb charge">💣 Bomb Core = +1 EMP wave bomb</li>
+            <li title="Cycles weapon tier">🔫 Weapon Core = unlock advanced weapon mode</li>
+            <li title="Immediately adds one life">❤️ Life Core = +1 hull life</li>
           </ul>
         </section>
-        <p id="statusTip" class="tiny" aria-live="polite">Tip: clear elites first to reduce incoming fire pressure.</p>
+        <p id="statusTip" class="tiny" aria-live="polite">Tip: spin-diving elites are dangerous—bomb them when clustered.</p>
       </aside>
     </div>
 
