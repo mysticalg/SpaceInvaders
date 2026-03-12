@@ -6,6 +6,8 @@ const ui = {
   wave: document.getElementById("wave"),
   lives: document.getElementById("lives"),
   power: document.getElementById("power"),
+  enemiesLeft: document.getElementById("enemiesLeft"),
+  nextLife: document.getElementById("nextLife"),
   splash: document.getElementById("splashScreen"),
   pause: document.getElementById("pauseScreen"),
   gameOver: document.getElementById("gameOverScreen"),
@@ -17,6 +19,7 @@ const ui = {
   form: document.getElementById("newRecordForm"),
   initials: document.getElementById("initials"),
   saveScoreBtn: document.getElementById("saveScoreBtn"),
+  statusTip: document.getElementById("statusTip"),
 };
 
 const STORAGE_KEY = "galaxionRetroHighScoresV1";
@@ -171,6 +174,7 @@ function shoot() {
 }
 
 function update(dt) {
+  // Timers are decremented once per frame and clamped at 0 to avoid drift.
   game.player.cooldown = Math.max(0, game.player.cooldown - dt);
   game.player.shield = Math.max(0, game.player.shield - dt);
   game.player.rapid = Math.max(0, game.player.rapid - dt);
@@ -196,7 +200,6 @@ function update(dt) {
   });
   game.playerBullets = game.playerBullets.filter((b) => b.y > -20 && b.x > -20 && b.x < canvas.width + 20);
 
-  const speedScale = 30 + game.wave * 8;
   game.formationPhase += dt * (0.85 + game.wave * 0.03);
 
   game.enemies.forEach((e, i) => {
@@ -327,8 +330,21 @@ function update(dt) {
   ui.score.textContent = game.score;
   ui.wave.textContent = game.wave;
   ui.lives.textContent = game.lives;
+  ui.enemiesLeft.textContent = game.enemies.length;
+  ui.nextLife.textContent = Math.max(0, game.extraLifeAt - game.score);
   ui.power.textContent =
     p.shield > 0 ? "SHIELD" : p.multishot > 0 ? "MULTI" : p.rapid > 0 ? "RAPID" : "NONE";
+
+  // Lightweight adaptive gameplay hint that updates without expensive analysis.
+  if (game.bonusRound) {
+    ui.statusTip.textContent = "Bonus raid active: focus on speed and chain hits for score spikes.";
+  } else if (game.lives === 1) {
+    ui.statusTip.textContent = "Critical hull: prioritize shield and life capsules before damage trading.";
+  } else if (game.enemies.length < 8) {
+    ui.statusTip.textContent = "Wave almost clear: keep pressure on remaining invaders.";
+  } else {
+    ui.statusTip.textContent = "Tip: clear elites first to reduce incoming fire pressure.";
+  }
 }
 
 function endGame() {

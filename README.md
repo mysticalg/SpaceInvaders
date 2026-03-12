@@ -6,6 +6,12 @@ A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure
 
 - Splash screen with controls and one-click start.
 - Fluid movement and shooting at 60fps with `requestAnimationFrame`.
+- Expanded heads-up display with:
+  - Score, wave, lives, and active power
+  - Remaining enemies in the current wave
+  - Points remaining until the next bonus life
+- In-game pilot help panel with icon-based power-up legend and tooltips.
+- Dynamic gameplay status tip that adapts to danger state, wave cleanup, and bonus rounds.
 - Multiple enemy classes and formations:
   - Grunt units
   - Zig-zag units
