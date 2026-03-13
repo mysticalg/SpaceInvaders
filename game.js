@@ -35,9 +35,27 @@ let running = false;
 let paused = false;
 let lastTime = 0;
 
-const stars = Array.from({ length: 120 }, () => ({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, speed: 25 + Math.random() * 75, size: 0.8 + Math.random() * 2 }));
-const planetLayer = Array.from({ length: 5 }, () => ({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: 35 + Math.random() * 55, speed: 8 + Math.random() * 10, hue: Math.floor(180 + Math.random() * 140) }));
-const nebulaLayer = Array.from({ length: 8 }, () => ({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, w: 140 + Math.random() * 220, h: 65 + Math.random() * 120, speed: 14 + Math.random() * 16, alpha: 0.06 + Math.random() * 0.08 }));
+const stars = Array.from({ length: 120 }, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  speed: 25 + Math.random() * 75,
+  size: 0.8 + Math.random() * 2,
+}));
+const planetLayer = Array.from({ length: 5 }, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  r: 35 + Math.random() * 55,
+  speed: 8 + Math.random() * 10,
+  hue: Math.floor(180 + Math.random() * 140),
+}));
+const nebulaLayer = Array.from({ length: 8 }, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  w: 140 + Math.random() * 220,
+  h: 65 + Math.random() * 120,
+  speed: 14 + Math.random() * 16,
+  alpha: 0.06 + Math.random() * 0.08,
+}));
 
 let game;
 
@@ -67,8 +85,8 @@ function initialState() {
     playerBullets: [],
     enemyBullets: [],
     enemies: [],
+    enemyRows: [],
     powerUps: [],
-    particles: [],
     extraLifeAt: 15000,
     formationPhase: 0,
     waveLength: 24,
@@ -109,59 +127,91 @@ function showOverlay(el, visible) {
   el.classList.toggle("visible", visible);
 }
 
-function getSpawnPoint(formation, offset) {
-  if (formation === "left") return { x: -70 - offset * 40, y: 60 + offset * 18 };
-  if (formation === "right") return { x: canvas.width + 70 + offset * 40, y: 60 + offset * 18 };
-  if (formation === "top-arc") return { x: 120 + offset * 70, y: -80 - offset * 30 };
-  return { x: canvas.width / 2 + Math.sin(offset * 0.6) * 380, y: -110 - offset * 35 };
+function getWeaponName() {
+  return WEAPONS[game.player.weaponIndex].toUpperCase();
+}
+
+function getSpawnPoint(formation, rowIndex) {
+  if (formation === "left") return { x: -120, y: 80 + rowIndex * 82 };
+  if (formation === "right") return { x: canvas.width + 120, y: 80 + rowIndex * 82 };
+  if (formation === "top") return { x: 120 + rowIndex * 210, y: -90 };
+  return { x: canvas.width / 2, y: -120 - rowIndex * 20 };
 }
 
 function spawnWave() {
   game.enemies = [];
   game.enemyBullets = [];
-  game.waveLength = Math.max(14, 24 - game.wave * 0.45);
+  game.enemyRows = [];
+  game.waveLength = Math.max(14, 23 - game.wave * 0.45);
   game.waveClock = game.waveLength;
   game.escapedThisWave = 0;
 
-  const cols = 10;
   const rows = 4;
-  const spacingX = 72;
-  const spacingY = 55;
+  const cols = 8;
+  const spacingX = 48;
+  const spacingY = 78;
   const startX = canvas.width / 2 - ((cols - 1) * spacingX) / 2;
-  const startY = 90;
-  const formations = ["left", "right", "top-arc", "circle-in"];
+  const startY = 95;
+  const formations = ["left", "right", "top", "center"];
+  const manoeuvres = ["arc", "circle", "wave", "loop"];
 
-  // Waves enter in different formations, perform attacks, then fly out if not destroyed.
   for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const idx = r * cols + c;
-      const formation = formations[(r + c) % formations.length];
-      const type = r === 0 ? "elite" : r < 2 ? "zig" : "grunt";
-      const hp = type === "elite" ? 3 : type === "zig" ? 2 : 1;
-      const spawn = getSpawnPoint(formation, c);
+    const rowId = `row-${game.wave}-${r}`;
+    const spawn = getSpawnPoint(formations[r % formations.length], r);
+    const rowType = r === 0 ? "elite" : r === 1 ? "zig" : "grunt";
+    const rowHp = rowType === "elite" ? 3 : rowType === "zig" ? 2 : 1;
+
+    const leader = {
+      id: `${rowId}-leader`,
+      rowId,
+      slot: 0,
+      x: spawn.x,
+      y: spawn.y,
+      w: 34,
+      h: 24,
+      hp: rowHp,
+      type: rowType,
+      phase: "enter",
+      t: Math.random() * Math.PI * 2,
+      spin: Math.random() * Math.PI * 2,
+      spinSpeed: 2 + Math.random() * 1.8,
+      enterProgress: 0,
+      spawnX: spawn.x,
+      spawnY: spawn.y,
+      anchorX: startX,
+      anchorY: startY + r * spacingY,
+      manoeuvre: manoeuvres[(r + game.wave) % manoeuvres.length],
+      attackTimer: 4.2 + Math.random() * 2.4,
+      shootCooldown: 0.35 + Math.random() * 0.4,
+      exitVX: formations[r % formations.length] === "left" ? -250 : 250,
+      exitVY: -(130 + Math.random() * 70),
+      escaped: false,
+      trail: [],
+    };
+
+    game.enemies.push(leader);
+
+    for (let c = 1; c < cols; c++) {
       game.enemies.push({
-        x: spawn.x,
+        id: `${rowId}-follower-${c}`,
+        rowId,
+        leaderId: leader.id,
+        slot: c,
+        x: spawn.x - c * 20,
         y: spawn.y,
-        spawnX: spawn.x,
-        spawnY: spawn.y,
-        targetX: startX + c * spacingX,
-        targetY: startY + r * spacingY,
-        w: 32,
-        h: 24,
-        hp,
-        type,
+        w: 30,
+        h: 22,
+        hp: rowHp,
+        type: rowType,
         phase: "enter",
-        enterProgress: 0,
-        attackTimer: 2.6 + Math.random() * 2.9,
-        divePattern: ["arc", "circle", "sine"][idx % 3],
-        exitVX: (Math.random() - 0.5) * 210,
-        exitVY: -(180 + Math.random() * 110),
-        shootCooldown: 0.35 + Math.random() * 0.6,
+        t: Math.random() * Math.PI * 2,
         spin: Math.random() * Math.PI * 2,
-        spinSpeed: 2.2 + Math.random() * 2.6,
+        spinSpeed: 2 + Math.random() * 1.5,
         escaped: false,
       });
     }
+
+    game.enemyRows.push({ rowId, leaderId: leader.id });
   }
 }
 
@@ -176,10 +226,6 @@ function startGame() {
   showOverlay(ui.pause, false);
 }
 
-function getWeaponName() {
-  return WEAPONS[game.player.weaponIndex].toUpperCase();
-}
-
 function shoot() {
   const p = game.player;
   if (p.cooldown > 0) return;
@@ -189,17 +235,17 @@ function shoot() {
 
   if (weapon === "pulse") {
     p.cooldown = 0.2 * rapidFactor;
-    game.playerBullets.push({ x: p.x, y: p.y - 12, vx: 0, vy: -640, r: 3, style: "pulse", life: 1.5, source: "player" });
+    game.playerBullets.push({ x: p.x, y: p.y - 12, vx: 0, vy: -640, r: 3, style: "pulse", life: 1.5 });
   } else if (weapon === "spread") {
     p.cooldown = 0.24 * rapidFactor;
-    [-190, 0, 190].forEach((vx) => game.playerBullets.push({ x: p.x, y: p.y - 10, vx, vy: -560, r: 3, style: "spread", life: 1.4, source: "player" }));
+    [-190, 0, 190].forEach((vx) => game.playerBullets.push({ x: p.x, y: p.y - 10, vx, vy: -560, r: 3, style: "spread", life: 1.4 }));
   } else if (weapon === "laser") {
     p.cooldown = 0.14 * rapidFactor;
-    game.playerBullets.push({ x: p.x, y: p.y - 20, vx: 0, vy: -760, r: 2, style: "laser", life: 1.1, source: "player" });
+    game.playerBullets.push({ x: p.x, y: p.y - 20, vx: 0, vy: -760, r: 2, style: "laser", life: 1.1 });
   } else {
     p.cooldown = 0.31 * rapidFactor;
     for (let i = -2; i <= 2; i++) {
-      game.playerBullets.push({ x: p.x, y: p.y - 12, vx: i * 140, vy: -540, r: 4, style: "nova", life: 1.25, source: "player" });
+      game.playerBullets.push({ x: p.x, y: p.y - 12, vx: i * 140, vy: -540, r: 4, style: "nova", life: 1.25 });
     }
   }
 }
@@ -207,13 +253,10 @@ function shoot() {
 function detonateBomb() {
   const p = game.player;
   if (p.bombCount <= 0 || p.bombCooldown > 0) return;
-
   p.bombCount -= 1;
   p.bombCooldown = 1.2;
   game.enemyBullets = [];
-  game.enemies.forEach((e) => {
-    e.hp -= e.type === "elite" ? 2 : 1;
-  });
+  game.enemies.forEach((e) => (e.hp -= e.type === "elite" ? 2 : 1));
 }
 
 function cycleWeapon(dir) {
@@ -224,16 +267,11 @@ function cycleWeapon(dir) {
 
 function addOrUpgradeProbe() {
   const p = game.player;
-
-  // Probe cores either add a new option ship or level existing ones.
   if (p.probes.length < 2) {
-    const newProbe = { x: p.x, y: p.y, delayFrames: p.probes.length === 0 ? 16 : 32, cooldown: 0, level: p.probeLevel };
-    p.probes.push(newProbe);
+    p.probes.push({ x: p.x, y: p.y, delayFrames: p.probes.length === 0 ? 16 : 32, cooldown: 0, level: p.probeLevel });
   } else {
     p.probeLevel = Math.min(4, p.probeLevel + 1);
-    p.probes.forEach((probe) => {
-      probe.level = p.probeLevel;
-    });
+    p.probes.forEach((probe) => (probe.level = p.probeLevel));
   }
 }
 
@@ -245,7 +283,6 @@ function updateParallax(dt) {
       s.x = Math.random() * canvas.width;
     }
   });
-
   planetLayer.forEach((p) => {
     p.y += p.speed * dt;
     if (p.y - p.r > canvas.height) {
@@ -253,7 +290,6 @@ function updateParallax(dt) {
       p.x = Math.random() * canvas.width;
     }
   });
-
   nebulaLayer.forEach((n) => {
     n.y += n.speed * dt;
     if (n.y - n.h > canvas.height) {
@@ -263,61 +299,83 @@ function updateParallax(dt) {
   });
 }
 
-function updateEnemyLifecycle(e, dt) {
-  e.spin += e.spinSpeed * dt;
-  e.shootCooldown -= dt;
+function updateLeader(leader, dt) {
+  leader.spin += leader.spinSpeed * dt;
+  leader.shootCooldown -= dt;
 
-  if (e.phase === "enter") {
-    e.enterProgress = Math.min(1, e.enterProgress + dt * (0.45 + game.wave * 0.03));
-    const t = e.enterProgress;
-    const curve = 1 - (1 - t) * (1 - t);
-    e.x = e.spawnX + (e.targetX - e.spawnX) * curve;
-    e.y = e.spawnY + (e.targetY - e.spawnY) * curve + Math.sin(t * Math.PI * 2) * 14;
-    if (t >= 1) e.phase = "attack";
-    return;
-  }
+  if (leader.phase === "enter") {
+    leader.enterProgress = Math.min(1, leader.enterProgress + dt * (0.52 + game.wave * 0.025));
+    const t = leader.enterProgress;
+    const ease = 1 - (1 - t) * (1 - t);
+    leader.x = leader.spawnX + (leader.anchorX - leader.spawnX) * ease;
+    leader.y = leader.spawnY + (leader.anchorY - leader.spawnY) * ease;
+    if (leader.enterProgress >= 1) leader.phase = "attack";
+  } else if (leader.phase === "attack") {
+    leader.attackTimer -= dt;
+    leader.t += dt;
 
-  if (e.phase === "attack") {
-    e.attackTimer -= dt;
-
-    if (e.divePattern === "arc") {
-      e.x = e.targetX + Math.sin(game.formationPhase + e.spin * 0.2) * 70;
-      e.y = e.targetY + Math.cos(game.formationPhase * 0.8 + e.spin * 0.15) * 30;
-    } else if (e.divePattern === "circle") {
-      e.x = e.targetX + Math.cos(e.spin) * 45;
-      e.y = e.targetY + Math.sin(e.spin) * 45;
+    if (leader.manoeuvre === "arc") {
+      leader.x = leader.anchorX + Math.sin(leader.t * 2.2) * 150;
+      leader.y = leader.anchorY + Math.cos(leader.t * 1.4) * 45;
+    } else if (leader.manoeuvre === "circle") {
+      leader.x = leader.anchorX + Math.cos(leader.t * 1.8) * 95;
+      leader.y = leader.anchorY + Math.sin(leader.t * 1.8) * 95;
+    } else if (leader.manoeuvre === "loop") {
+      leader.x = leader.anchorX + Math.sin(leader.t * 1.8) * 130;
+      leader.y = leader.anchorY + Math.sin(leader.t * 3.6) * 62;
     } else {
-      e.x = e.targetX + Math.sin(e.spin * 0.9) * 90;
-      e.y = e.targetY + Math.sin(e.spin * 1.4) * 24;
+      leader.x = leader.anchorX + Math.sin(leader.t * 2.7) * 165;
+      leader.y = leader.anchorY + Math.sin(leader.t * 1.6) * 38;
     }
 
-    if (e.shootCooldown <= 0) {
-      game.enemyBullets.push({ x: e.x, y: e.y, vx: Math.sin(e.spin) * 90, vy: 220 + game.wave * 16, r: 4 });
-      e.shootCooldown = Math.max(0.2, 0.9 - game.wave * 0.03) + Math.random() * 0.4;
+    if (leader.shootCooldown <= 0) {
+      game.enemyBullets.push({ x: leader.x, y: leader.y, vx: Math.sin(leader.t * 2.1) * 90, vy: 215 + game.wave * 15, r: 4 });
+      leader.shootCooldown = Math.max(0.22, 0.82 - game.wave * 0.03) + Math.random() * 0.34;
     }
 
-    if (e.attackTimer <= 0 || game.waveClock <= 0) {
-      e.phase = "exit";
-      e.exitVX += e.x < canvas.width / 2 ? -80 : 80;
+    if (leader.attackTimer <= 0 || game.waveClock <= 0) {
+      leader.phase = "exit";
+      leader.exitVX += leader.x < canvas.width / 2 ? -110 : 110;
     }
-    return;
+  } else if (leader.phase === "exit") {
+    leader.x += leader.exitVX * dt;
+    leader.y += leader.exitVY * dt;
+    if (!leader.escaped && (leader.y < -90 || leader.x < -160 || leader.x > canvas.width + 160)) {
+      leader.escaped = true;
+      leader.hp = 0;
+      game.escapedThisWave += 1;
+    }
   }
 
-  if (e.phase === "exit") {
-    e.x += e.exitVX * dt;
-    e.y += e.exitVY * dt;
-    if (!e.escaped && (e.y < -80 || e.x < -120 || e.x > canvas.width + 120)) {
-      e.escaped = true;
-      game.escapedThisWave += 1;
-      e.hp = 0;
-    }
+  // Leaders write trails. Followers consume these points to stay aligned in a clean train.
+  leader.trail.unshift({ x: leader.x, y: leader.y, phase: leader.phase });
+  if (leader.trail.length > 220) leader.trail.length = 220;
+}
+
+function updateFollower(follower, leader, dt) {
+  follower.spin += follower.spinSpeed * dt;
+  if (!leader) return;
+
+  const delay = 8 + follower.slot * 8;
+  const target = leader.trail[Math.min(delay, leader.trail.length - 1)] || { x: leader.x, y: leader.y, phase: leader.phase };
+  follower.phase = target.phase;
+
+  follower.x += (target.x - follower.x) * Math.min(1, dt * 14);
+  follower.y += (target.y - follower.y) * Math.min(1, dt * 14);
+
+  if (follower.phase === "attack" && Math.random() < dt * (0.04 + game.wave * 0.004)) {
+    game.enemyBullets.push({ x: follower.x, y: follower.y, vx: Math.sin(follower.spin) * 55, vy: 180 + game.wave * 12, r: 3.5 });
+  }
+
+  if (!follower.escaped && (follower.y < -90 || follower.x < -160 || follower.x > canvas.width + 160)) {
+    follower.escaped = true;
+    follower.hp = 0;
+    game.escapedThisWave += 1;
   }
 }
 
 function updateProbes(dt) {
   const p = game.player;
-
-  // Keep a short player ghost trail for Gradius-style option following.
   p.trail.unshift({ x: p.x, y: p.y });
   if (p.trail.length > 90) p.trail.length = 90;
 
@@ -331,10 +389,10 @@ function updateProbes(dt) {
     if (probe.cooldown <= 0 && running && !paused) {
       const level = Math.max(probe.level, p.probeLevel);
       if (level >= 3) {
-        game.playerBullets.push({ x: probe.x, y: probe.y - 8, vx: -110, vy: -560, r: 2.5, style: "probe", life: 1.3, source: "probe" });
-        game.playerBullets.push({ x: probe.x, y: probe.y - 8, vx: 110, vy: -560, r: 2.5, style: "probe", life: 1.3, source: "probe" });
+        game.playerBullets.push({ x: probe.x, y: probe.y - 8, vx: -110, vy: -560, r: 2.5, style: "probe", life: 1.3 });
+        game.playerBullets.push({ x: probe.x, y: probe.y - 8, vx: 110, vy: -560, r: 2.5, style: "probe", life: 1.3 });
       }
-      game.playerBullets.push({ x: probe.x, y: probe.y - 8, vx: 0, vy: -620, r: level >= 4 ? 3 : 2.5, style: "probe", life: 1.35, source: "probe" });
+      game.playerBullets.push({ x: probe.x, y: probe.y - 8, vx: 0, vy: -620, r: level >= 4 ? 3 : 2.5, style: "probe", life: 1.35 });
       probe.cooldown = Math.max(0.09, 0.28 - level * 0.03);
     }
   });
@@ -367,13 +425,17 @@ function update(dt) {
   });
   game.playerBullets = game.playerBullets.filter((b) => b.life > 0 && b.y > -30 && b.x > -60 && b.x < canvas.width + 60);
 
-  game.enemies.forEach((e) => updateEnemyLifecycle(e, dt));
+  const enemiesById = new Map(game.enemies.map((e) => [e.id, e]));
+  const leaders = game.enemies.filter((e) => !e.leaderId);
+  const followers = game.enemies.filter((e) => e.leaderId);
+  leaders.forEach((leader) => updateLeader(leader, dt));
+  followers.forEach((follower) => updateFollower(follower, enemiesById.get(follower.leaderId), dt));
 
   game.enemyBullets.forEach((b) => {
     b.x += b.vx * dt;
     b.y += b.vy * dt;
   });
-  game.enemyBullets = game.enemyBullets.filter((b) => b.y < canvas.height + 20 && b.x > -30 && b.x < canvas.width + 30);
+  game.enemyBullets = game.enemyBullets.filter((b) => b.y < canvas.height + 20 && b.x > -40 && b.x < canvas.width + 40);
 
   game.powerUps.forEach((power) => {
     power.y += power.vy * dt;
@@ -393,8 +455,7 @@ function update(dt) {
           game.score += e.type === "elite" ? 240 : e.type === "zig" ? 120 : 80;
           if (Math.random() < 0.22) {
             const kinds = ["shield", "rapid", "multishot", "life", "bomb", "weapon", "probe"];
-            const kind = kinds[Math.floor(Math.random() * kinds.length)];
-            game.powerUps.push({ x: e.x, y: e.y, vy: 96, kind, t: 0, phase: Math.random() * Math.PI * 2 });
+            game.powerUps.push({ x: e.x, y: e.y, vy: 96, kind: kinds[Math.floor(Math.random() * kinds.length)], t: 0, phase: Math.random() * Math.PI * 2 });
           }
         }
       }
@@ -432,7 +493,7 @@ function update(dt) {
     }
   }
 
-  game.enemies = game.enemies.filter((e) => e.hp > 0 && e.y < canvas.height + 120 && e.x > -140 && e.x < canvas.width + 140);
+  game.enemies = game.enemies.filter((e) => e.hp > 0 && e.y < canvas.height + 140 && e.x > -180 && e.x < canvas.width + 180);
 
   if (game.score >= game.extraLifeAt) {
     game.lives += 1;
@@ -461,11 +522,9 @@ function update(dt) {
   ui.power.textContent = activePower;
 
   if (game.waveClock < 6) {
-    ui.statusTip.textContent = "Final seconds! Enemies are escaping—finish them before they break away.";
-  } else if (p.probes.length) {
-    ui.statusTip.textContent = "Probe wing online: support ships ghost your path and fire automatically.";
+    ui.statusTip.textContent = "Final seconds! Finish the row leaders before they escort their squad out.";
   } else {
-    ui.statusTip.textContent = "Collect 🛰️ Probe Cores to deploy invulnerable Gradius-style option shooters.";
+    ui.statusTip.textContent = "Rows now follow a leader: track the lead bug to predict full formation movement.";
   }
 }
 
@@ -478,20 +537,90 @@ function endGame() {
   showOverlay(ui.gameOver, true);
 }
 
-function drawShip(x, y, color, rotation = 0, scale = 1) {
+function drawPlayerShip(x, y, shieldLevel) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(rotation);
-  ctx.scale(scale, scale);
-  ctx.fillStyle = color;
+
+  // Main hull
+  ctx.fillStyle = "#9be6ff";
   ctx.beginPath();
-  ctx.moveTo(0, -14);
-  ctx.lineTo(-17, 11);
-  ctx.lineTo(17, 11);
+  ctx.moveTo(0, -18);
+  ctx.lineTo(-12, 12);
+  ctx.lineTo(-6, 8);
+  ctx.lineTo(6, 8);
+  ctx.lineTo(12, 12);
   ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.6)";
-  ctx.fillRect(-4, -4, 8, 6);
+
+  // Cockpit
+  ctx.fillStyle = "#0b1d2e";
+  ctx.beginPath();
+  ctx.ellipse(0, -3, 5, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Wings/engines
+  ctx.fillStyle = "#6cc1ff";
+  ctx.fillRect(-20, 8, 8, 4);
+  ctx.fillRect(12, 8, 8, 4);
+  ctx.fillStyle = "#ffe066";
+  ctx.fillRect(-6, 12, 4, 4);
+  ctx.fillRect(2, 12, 4, 4);
+
+  // Shield ring
+  ctx.strokeStyle = `rgba(142,202,230,${Math.max(0.2, shieldLevel / 100) * 0.6})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, 24, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBugAlien(x, y, type, spin = 0, scale = 1) {
+  const colorMap = { elite: "#ff2a6d", zig: "#ff9f1c", grunt: "#3ddcff" };
+  const body = colorMap[type] || "#3ddcff";
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(spin);
+  ctx.scale(scale, scale);
+
+  // Bug body
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 11, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head and eyes
+  ctx.fillStyle = "#ffd166";
+  ctx.beginPath();
+  ctx.ellipse(0, -8, 6, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#1d1d1d";
+  ctx.fillRect(-3, -9, 2, 2);
+  ctx.fillRect(1, -9, 2, 2);
+
+  // Legs
+  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.lineWidth = 1.5;
+  for (let i = -1; i <= 1; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * 4, 2);
+    ctx.lineTo(i * 8, 8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(i * 4, -1);
+    ctx.lineTo(i * 8, -7);
+    ctx.stroke();
+  }
+
+  // Antenna
+  ctx.beginPath();
+  ctx.moveTo(-2, -12);
+  ctx.lineTo(-4, -16);
+  ctx.moveTo(2, -12);
+  ctx.lineTo(4, -16);
+  ctx.stroke();
+
   ctx.restore();
 }
 
@@ -502,7 +631,6 @@ function drawParallax() {
     ctx.ellipse(n.x, n.y, n.w, n.h, 0.4, 0, Math.PI * 2);
     ctx.fill();
   });
-
   planetLayer.forEach((p) => {
     const gradient = ctx.createRadialGradient(p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.2, p.x, p.y, p.r);
     gradient.addColorStop(0, `hsla(${p.hue}, 75%, 75%, 0.28)`);
@@ -512,7 +640,6 @@ function drawParallax() {
     ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
     ctx.fill();
   });
-
   stars.forEach((s) => {
     ctx.fillStyle = "rgba(255,255,255,0.82)";
     ctx.fillRect(s.x, s.y, s.size, s.size);
@@ -524,18 +651,16 @@ function render() {
   drawParallax();
   if (!game) return;
 
-  const shieldGlow = Math.max(0.2, game.player.shieldEnergy / 100);
-  drawShip(game.player.x, game.player.y, `rgba(0,255,153,${0.5 + shieldGlow * 0.5})`, 0, 1.1);
-  ctx.strokeStyle = `rgba(142,202,230,${shieldGlow * 0.55})`;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(game.player.x, game.player.y, 22, 0, Math.PI * 2);
-  ctx.stroke();
+  drawPlayerShip(game.player.x, game.player.y, game.player.shieldEnergy);
 
   game.player.probes.forEach((probe, index) => {
     const tint = index === 0 ? "#9bf6ff" : "#bdb2ff";
-    drawShip(probe.x, probe.y, tint, Math.sin(performance.now() * 0.004 + index), 0.7 + probe.level * 0.05);
-    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.save();
+    ctx.translate(probe.x, probe.y);
+    ctx.scale(0.7 + probe.level * 0.05, 0.7 + probe.level * 0.05);
+    drawPlayerShip(0, 0, 65);
+    ctx.restore();
+    ctx.strokeStyle = tint;
     ctx.beginPath();
     ctx.arc(probe.x, probe.y, 12 + probe.level * 1.5, 0, Math.PI * 2);
     ctx.stroke();
@@ -560,13 +685,26 @@ function render() {
     ctx.fill();
   });
 
-  game.enemies.forEach((e) => {
-    const color = e.type === "elite" ? "#ff2a6d" : e.type === "zig" ? "#ffaa00" : "#00e5ff";
-    drawShip(e.x, e.y, color, e.spin, e.phase === "attack" ? 1.1 : 1);
-  });
+  game.enemies.forEach((e) => drawBugAlien(e.x, e.y, e.type, e.spin, e.phase === "attack" ? 1.12 : 1));
 
-  const colorMap = { shield: "#8ecae6", rapid: "#ffe066", multishot: "#ffadad", life: "#80ed99", bomb: "#f72585", weapon: "#c77dff", probe: "#9bf6ff" };
-  const iconMap = { shield: "🛡", rapid: "⚡", multishot: "🔱", life: "❤", bomb: "💣", weapon: "🔫", probe: "🛰" };
+  const colorMap = {
+    shield: "#8ecae6",
+    rapid: "#ffe066",
+    multishot: "#ffadad",
+    life: "#80ed99",
+    bomb: "#f72585",
+    weapon: "#c77dff",
+    probe: "#9bf6ff",
+  };
+  const iconMap = {
+    shield: "🛡",
+    rapid: "⚡",
+    multishot: "🔱",
+    life: "❤",
+    bomb: "💣",
+    weapon: "🔫",
+    probe: "🛰",
+  };
   game.powerUps.forEach((power) => {
     ctx.save();
     ctx.translate(power.x, power.y);

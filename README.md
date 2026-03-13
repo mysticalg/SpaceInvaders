@@ -8,7 +8,7 @@ A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure
 - Fluid movement and shooting at 60fps with `requestAnimationFrame`.
 - Polished retro HUD with score, wave, lives, shield %, active weapon, bombs, probe wing status, enemies left, next extra life target, and wave timer.
 - Multi-layer parallax backdrop with stars, galaxies, and drifting planets.
-- Animated enemies with 360° spin, staged formation entries, and attack patterns (arcs, circles, and sine runs).
+- Leader-driven formations: each enemy row follows a lead bug ship through arcs, circles, loops, and coordinated exits.
 - Wave-window pressure system: each wave has a countdown and surviving enemies fly away when time expires.
 - Expanded weapon system with selectable loadouts:
   - Pulse
@@ -18,6 +18,7 @@ A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure
 - EMP bomb system (`B`) to clear enemy bullets and damage clustered invaders.
 - Regenerative shield-energy system that absorbs hits before hull lives are consumed.
 - Colorful animated collectible cores with unique icons and effects.
+- Updated sprite art: bug-like alien invaders and a more spaceship-like player craft silhouette.
 - In-game pilot help panel + live strategy tips.
 - Gradius-style probe options that ghost the player path, auto-fire, and can be upgraded with Probe Cores.
 - Multiple enemy classes and formations:
