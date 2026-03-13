@@ -6,6 +6,21 @@ A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure
 
 - Splash screen with controls and one-click start.
 - Fluid movement and shooting at 60fps with `requestAnimationFrame`.
+- Polished retro HUD with score, wave, lives, shield %, active weapon, bombs, probe wing status, enemies left, next extra life target, and wave timer.
+- Multi-layer parallax backdrop with stars, galaxies, and drifting planets.
+- Leader-driven formations: each enemy row follows a lead bug ship through arcs, circles, loops, and coordinated exits.
+- Wave-window pressure system: each wave has a countdown and surviving enemies fly away when time expires.
+- Expanded weapon system with selectable loadouts:
+  - Pulse
+  - Spread
+  - Laser
+  - Nova burst
+- EMP bomb system (`B`) to clear enemy bullets and damage clustered invaders.
+- Regenerative shield-energy system that absorbs hits before hull lives are consumed.
+- Colorful animated collectible cores with unique icons and effects.
+- Updated sprite art: bug-like alien invaders and a more spaceship-like player craft silhouette.
+- In-game pilot help panel + live strategy tips.
+- Gradius-style probe options that ghost the player path, auto-fire, and can be upgraded with Probe Cores.
 - Multiple enemy classes and formations:
   - Grunt units
   - Zig-zag units
@@ -13,11 +28,6 @@ A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure
   - Bonus raid enemies
 - Progressive wave difficulty and attack rate scaling.
 - Bonus rounds every 4th wave.
-- Power-ups:
-  - Shield
-  - Rapid fire
-  - Multi-shot
-  - Extra life capsules
 - Extra life score milestones.
 - Hall of Fame (Top 10) stored in Local Storage for durable persistence on each browser/device.
 - Pause/resume support.
@@ -26,7 +36,10 @@ A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure
 
 - **Move:** Arrow Left/Right or A/D
 - **Fire:** Space
+- **Bomb:** B
+- **Cycle Weapon:** Q / E
 - **Pause:** P
+- **Wave goal:** destroy enemies before they complete attack runs and escape
 - **Start:** Enter
 
 ## Run locally
@@ -44,22 +57,3 @@ Then open `http://localhost:8080`.
 Scores are stored using `localStorage` key `galaxionRetroHighScoresV1`.
 
 This means scores are retained across page refreshes and browser restarts on the same browser profile.
-
-## GitHub Pages deployment
-
-This repo now deploys automatically to GitHub Pages from the `main` branch using a two-job workflow (`build` + `deploy`).
-
-If you saw deployment errors before, make sure repository settings are configured as:
-
-- **Settings → Pages → Build and deployment → Source:** `GitHub Actions`
-
-Workflow file: `.github/workflows/build.yml`
-
-## CI build workflow
-
-A GitHub Action is included to validate the project on each push to `main`:
-
-- checks HTML/CSS/JS files exist
-- packages the static site as an artifact
-
-File: `.github/workflows/build.yml`
