@@ -8,6 +8,7 @@ const ui = {
   shield: document.getElementById("shield"),
   weapon: document.getElementById("weapon"),
   bombs: document.getElementById("bombs"),
+  probes: document.getElementById("probes"),
   enemiesLeft: document.getElementById("enemiesLeft"),
   nextLife: document.getElementById("nextLife"),
   waveTime: document.getElementById("waveTime"),
@@ -45,16 +46,48 @@ function initialState() {
     score: 0,
     wave: 1,
     lives: 3,
-    player: { x: canvas.width / 2, y: canvas.height - 58, w: 36, h: 26, speed: 390, cooldown: 0, shieldEnergy: 100, shieldRegen: 5, weaponIndex: 0, rapid: 0, multishot: 0, bombCount: 2, bombCooldown: 0 },
-    playerBullets: [], enemyBullets: [], enemies: [], particles: [], powerUps: [],
-    extraLifeAt: 15000, formationPhase: 0,
-    waveLength: 24, waveClock: 24, escapedThisWave: 0,
+    player: {
+      x: canvas.width / 2,
+      y: canvas.height - 58,
+      w: 36,
+      h: 26,
+      speed: 390,
+      cooldown: 0,
+      shieldEnergy: 100,
+      shieldRegen: 5,
+      weaponIndex: 0,
+      rapid: 0,
+      multishot: 0,
+      bombCount: 2,
+      bombCooldown: 0,
+      probeLevel: 1,
+      probes: [],
+      trail: [],
+    },
+    playerBullets: [],
+    enemyBullets: [],
+    enemies: [],
+    powerUps: [],
+    particles: [],
+    extraLifeAt: 15000,
+    formationPhase: 0,
+    waveLength: 24,
+    waveClock: 24,
+    escapedThisWave: 0,
   };
 }
 
-function loadScores() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; } }
-function saveScores(scores) { localStorage.setItem(STORAGE_KEY, JSON.stringify(scores)); }
-function showOverlay(el, visible) { el.classList.toggle("visible", visible); }
+function loadScores() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveScores(scores) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
+}
 
 function renderScores() {
   const list = loadScores();
@@ -72,6 +105,10 @@ function renderScores() {
   });
 }
 
+function showOverlay(el, visible) {
+  el.classList.toggle("visible", visible);
+}
+
 function getSpawnPoint(formation, offset) {
   if (formation === "left") return { x: -70 - offset * 40, y: 60 + offset * 18 };
   if (formation === "right") return { x: canvas.width + 70 + offset * 40, y: 60 + offset * 18 };
@@ -82,7 +119,7 @@ function getSpawnPoint(formation, offset) {
 function spawnWave() {
   game.enemies = [];
   game.enemyBullets = [];
-  game.waveLength = Math.max(15, 24 - game.wave * 0.45);
+  game.waveLength = Math.max(14, 24 - game.wave * 0.45);
   game.waveClock = game.waveLength;
   game.escapedThisWave = 0;
 
@@ -94,7 +131,7 @@ function spawnWave() {
   const startY = 90;
   const formations = ["left", "right", "top-arc", "circle-in"];
 
-  // Enemies now enter in staged formations, run attack patterns, then leave the area.
+  // Waves enter in different formations, perform attacks, then fly out if not destroyed.
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const idx = r * cols + c;
@@ -115,7 +152,7 @@ function spawnWave() {
         type,
         phase: "enter",
         enterProgress: 0,
-        attackTimer: 2.8 + Math.random() * 2.8,
+        attackTimer: 2.6 + Math.random() * 2.9,
         divePattern: ["arc", "circle", "sine"][idx % 3],
         exitVX: (Math.random() - 0.5) * 210,
         exitVY: -(180 + Math.random() * 110),
@@ -139,36 +176,44 @@ function startGame() {
   showOverlay(ui.pause, false);
 }
 
-function getWeaponName() { return WEAPONS[game.player.weaponIndex].toUpperCase(); }
+function getWeaponName() {
+  return WEAPONS[game.player.weaponIndex].toUpperCase();
+}
 
 function shoot() {
-  if (game.player.cooldown > 0) return;
   const p = game.player;
-  const w = WEAPONS[p.weaponIndex];
+  if (p.cooldown > 0) return;
+
+  const weapon = WEAPONS[p.weaponIndex];
   const rapidFactor = p.rapid > 0 ? 0.55 : 1;
 
-  if (w === "pulse") {
+  if (weapon === "pulse") {
     p.cooldown = 0.2 * rapidFactor;
-    game.playerBullets.push({ x: p.x, y: p.y - 12, vx: 0, vy: -640, r: 3, style: "pulse", life: 1.5 });
-  } else if (w === "spread") {
+    game.playerBullets.push({ x: p.x, y: p.y - 12, vx: 0, vy: -640, r: 3, style: "pulse", life: 1.5, source: "player" });
+  } else if (weapon === "spread") {
     p.cooldown = 0.24 * rapidFactor;
-    [-190, 0, 190].forEach((vx) => game.playerBullets.push({ x: p.x, y: p.y - 10, vx, vy: -560, r: 3, style: "spread", life: 1.4 }));
-  } else if (w === "laser") {
+    [-190, 0, 190].forEach((vx) => game.playerBullets.push({ x: p.x, y: p.y - 10, vx, vy: -560, r: 3, style: "spread", life: 1.4, source: "player" }));
+  } else if (weapon === "laser") {
     p.cooldown = 0.14 * rapidFactor;
-    game.playerBullets.push({ x: p.x, y: p.y - 20, vx: 0, vy: -760, r: 2, style: "laser", life: 1.1 });
+    game.playerBullets.push({ x: p.x, y: p.y - 20, vx: 0, vy: -760, r: 2, style: "laser", life: 1.1, source: "player" });
   } else {
     p.cooldown = 0.31 * rapidFactor;
-    for (let i = -2; i <= 2; i++) game.playerBullets.push({ x: p.x, y: p.y - 12, vx: i * 140, vy: -540, r: 4, style: "nova", life: 1.25 });
+    for (let i = -2; i <= 2; i++) {
+      game.playerBullets.push({ x: p.x, y: p.y - 12, vx: i * 140, vy: -540, r: 4, style: "nova", life: 1.25, source: "player" });
+    }
   }
 }
 
 function detonateBomb() {
   const p = game.player;
   if (p.bombCount <= 0 || p.bombCooldown > 0) return;
+
   p.bombCount -= 1;
   p.bombCooldown = 1.2;
   game.enemyBullets = [];
-  game.enemies.forEach((e) => (e.hp -= e.type === "elite" ? 2 : 1));
+  game.enemies.forEach((e) => {
+    e.hp -= e.type === "elite" ? 2 : 1;
+  });
 }
 
 function cycleWeapon(dir) {
@@ -177,10 +222,45 @@ function cycleWeapon(dir) {
   p.weaponIndex = (p.weaponIndex + dir + maxIndex + 1) % (maxIndex + 1);
 }
 
+function addOrUpgradeProbe() {
+  const p = game.player;
+
+  // Probe cores either add a new option ship or level existing ones.
+  if (p.probes.length < 2) {
+    const newProbe = { x: p.x, y: p.y, delayFrames: p.probes.length === 0 ? 16 : 32, cooldown: 0, level: p.probeLevel };
+    p.probes.push(newProbe);
+  } else {
+    p.probeLevel = Math.min(4, p.probeLevel + 1);
+    p.probes.forEach((probe) => {
+      probe.level = p.probeLevel;
+    });
+  }
+}
+
 function updateParallax(dt) {
-  stars.forEach((s) => { s.y += s.speed * dt; if (s.y > canvas.height) { s.y = -2; s.x = Math.random() * canvas.width; } });
-  planetLayer.forEach((p) => { p.y += p.speed * dt; if (p.y - p.r > canvas.height) { p.y = -p.r * 2; p.x = Math.random() * canvas.width; } });
-  nebulaLayer.forEach((n) => { n.y += n.speed * dt; if (n.y - n.h > canvas.height) { n.y = -n.h; n.x = Math.random() * canvas.width; } });
+  stars.forEach((s) => {
+    s.y += s.speed * dt;
+    if (s.y > canvas.height) {
+      s.y = -2;
+      s.x = Math.random() * canvas.width;
+    }
+  });
+
+  planetLayer.forEach((p) => {
+    p.y += p.speed * dt;
+    if (p.y - p.r > canvas.height) {
+      p.y = -p.r * 2;
+      p.x = Math.random() * canvas.width;
+    }
+  });
+
+  nebulaLayer.forEach((n) => {
+    n.y += n.speed * dt;
+    if (n.y - n.h > canvas.height) {
+      n.y = -n.h;
+      n.x = Math.random() * canvas.width;
+    }
+  });
 }
 
 function updateEnemyLifecycle(e, dt) {
@@ -199,7 +279,7 @@ function updateEnemyLifecycle(e, dt) {
 
   if (e.phase === "attack") {
     e.attackTimer -= dt;
-    const t = e.attackTimer;
+
     if (e.divePattern === "arc") {
       e.x = e.targetX + Math.sin(game.formationPhase + e.spin * 0.2) * 70;
       e.y = e.targetY + Math.cos(game.formationPhase * 0.8 + e.spin * 0.15) * 30;
@@ -216,9 +296,9 @@ function updateEnemyLifecycle(e, dt) {
       e.shootCooldown = Math.max(0.2, 0.9 - game.wave * 0.03) + Math.random() * 0.4;
     }
 
-    if (t <= 0 || game.waveClock <= 0) {
+    if (e.attackTimer <= 0 || game.waveClock <= 0) {
       e.phase = "exit";
-      e.exitVX += (e.x < canvas.width / 2 ? -80 : 80);
+      e.exitVX += e.x < canvas.width / 2 ? -80 : 80;
     }
     return;
   }
@@ -232,6 +312,32 @@ function updateEnemyLifecycle(e, dt) {
       e.hp = 0;
     }
   }
+}
+
+function updateProbes(dt) {
+  const p = game.player;
+
+  // Keep a short player ghost trail for Gradius-style option following.
+  p.trail.unshift({ x: p.x, y: p.y });
+  if (p.trail.length > 90) p.trail.length = 90;
+
+  p.probes.forEach((probe, i) => {
+    const trailIndex = Math.min(p.trail.length - 1, probe.delayFrames + i * 6);
+    const target = p.trail[trailIndex] || { x: p.x, y: p.y };
+    probe.x += (target.x - probe.x) * Math.min(1, dt * 12);
+    probe.y += (target.y - probe.y) * Math.min(1, dt * 12);
+
+    probe.cooldown -= dt;
+    if (probe.cooldown <= 0 && running && !paused) {
+      const level = Math.max(probe.level, p.probeLevel);
+      if (level >= 3) {
+        game.playerBullets.push({ x: probe.x, y: probe.y - 8, vx: -110, vy: -560, r: 2.5, style: "probe", life: 1.3, source: "probe" });
+        game.playerBullets.push({ x: probe.x, y: probe.y - 8, vx: 110, vy: -560, r: 2.5, style: "probe", life: 1.3, source: "probe" });
+      }
+      game.playerBullets.push({ x: probe.x, y: probe.y - 8, vx: 0, vy: -620, r: level >= 4 ? 3 : 2.5, style: "probe", life: 1.35, source: "probe" });
+      probe.cooldown = Math.max(0.09, 0.28 - level * 0.03);
+    }
+  });
 }
 
 function update(dt) {
@@ -249,31 +355,46 @@ function update(dt) {
   p.x = Math.max(25, Math.min(canvas.width - 25, p.x));
 
   updateParallax(dt);
+  updateProbes(dt);
+
   game.waveClock = Math.max(0, game.waveClock - dt);
   game.formationPhase += dt * (0.9 + game.wave * 0.03);
 
-  game.playerBullets.forEach((b) => { b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt; });
+  game.playerBullets.forEach((b) => {
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    b.life -= dt;
+  });
   game.playerBullets = game.playerBullets.filter((b) => b.life > 0 && b.y > -30 && b.x > -60 && b.x < canvas.width + 60);
 
   game.enemies.forEach((e) => updateEnemyLifecycle(e, dt));
 
-  game.enemyBullets.forEach((b) => { b.x += b.vx * dt; b.y += b.vy * dt; });
+  game.enemyBullets.forEach((b) => {
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+  });
   game.enemyBullets = game.enemyBullets.filter((b) => b.y < canvas.height + 20 && b.x > -30 && b.x < canvas.width + 30);
 
-  game.powerUps.forEach((power) => { power.y += power.vy * dt; power.t += dt; power.x += Math.sin(power.t * 4 + power.phase) * 22 * dt; });
+  game.powerUps.forEach((power) => {
+    power.y += power.vy * dt;
+    power.t += dt;
+    power.x += Math.sin(power.t * 4 + power.phase) * 22 * dt;
+  });
   game.powerUps = game.powerUps.filter((power) => power.y < canvas.height + 50);
 
-  // Fast AABB checks keep combat responsive under heavy projectile counts.
+  // Fast AABB checks keep combat smooth under heavy bullet counts.
   for (const b of game.playerBullets) {
     for (const e of game.enemies) {
       if (e.hp > 0 && Math.abs(b.x - e.x) < e.w / 2 && Math.abs(b.y - e.y) < e.h / 2) {
         b.life = 0;
-        e.hp -= b.style === "laser" ? 1.4 : b.style === "nova" ? 0.9 : 1;
+        const probeBonus = b.style === "probe" ? 1.1 : 1;
+        e.hp -= (b.style === "laser" ? 1.4 : b.style === "nova" ? 0.9 : 1) * probeBonus;
         if (e.hp <= 0) {
           game.score += e.type === "elite" ? 240 : e.type === "zig" ? 120 : 80;
-          if (Math.random() < 0.2) {
-            const kinds = ["shield", "rapid", "multishot", "life", "bomb", "weapon"];
-            game.powerUps.push({ x: e.x, y: e.y, vy: 96, kind: kinds[Math.floor(Math.random() * kinds.length)], t: 0, phase: Math.random() * Math.PI * 2 });
+          if (Math.random() < 0.22) {
+            const kinds = ["shield", "rapid", "multishot", "life", "bomb", "weapon", "probe"];
+            const kind = kinds[Math.floor(Math.random() * kinds.length)];
+            game.powerUps.push({ x: e.x, y: e.y, vy: 96, kind, t: 0, phase: Math.random() * Math.PI * 2 });
           }
         }
       }
@@ -287,7 +408,10 @@ function update(dt) {
       if (p.shieldEnergy <= 0) {
         game.lives -= 1;
         p.shieldEnergy = 45;
-        if (game.lives <= 0) return endGame();
+        if (game.lives <= 0) {
+          endGame();
+          return;
+        }
       }
     }
   }
@@ -297,30 +421,40 @@ function update(dt) {
       power.y = canvas.height + 999;
       if (power.kind === "shield") p.shieldEnergy = Math.min(100, p.shieldEnergy + 40);
       if (power.kind === "rapid") p.rapid = 12;
-      if (power.kind === "multishot") { p.multishot = 12; p.weaponIndex = Math.max(p.weaponIndex, 1); }
+      if (power.kind === "multishot") {
+        p.multishot = 12;
+        p.weaponIndex = Math.max(p.weaponIndex, 1);
+      }
       if (power.kind === "life") game.lives += 1;
       if (power.kind === "bomb") p.bombCount += 1;
       if (power.kind === "weapon") p.weaponIndex = Math.min(WEAPONS.length - 1, p.weaponIndex + 1);
+      if (power.kind === "probe") addOrUpgradeProbe();
     }
   }
 
   game.enemies = game.enemies.filter((e) => e.hp > 0 && e.y < canvas.height + 120 && e.x > -140 && e.x < canvas.width + 140);
 
-  if (game.score >= game.extraLifeAt) { game.lives += 1; game.extraLifeAt += 15000; }
+  if (game.score >= game.extraLifeAt) {
+    game.lives += 1;
+    game.extraLifeAt += 15000;
+  }
 
-  // Limited clear window: if enemies survive long enough they escape and the wave advances.
   if (!game.enemies.length || game.waveClock <= 0) {
     game.wave += 1;
     spawnWave();
   }
 
-  const activePower = [p.rapid > 0 ? "RAPID" : "", p.multishot > 0 ? "MULTI" : ""].filter(Boolean).join(" + ") || "NONE";
+  const activePower = [p.rapid > 0 ? "RAPID" : "", p.multishot > 0 ? "MULTI" : "", p.probes.length ? "PROBES" : ""]
+    .filter(Boolean)
+    .join(" + ") || "NONE";
+
   ui.score.textContent = game.score;
   ui.wave.textContent = game.wave;
   ui.lives.textContent = game.lives;
   ui.shield.textContent = `${Math.max(0, Math.round(p.shieldEnergy))}%`;
   ui.weapon.textContent = getWeaponName();
   ui.bombs.textContent = p.bombCount;
+  ui.probes.textContent = `${p.probes.length} / L${p.probeLevel}`;
   ui.enemiesLeft.textContent = game.enemies.length;
   ui.nextLife.textContent = Math.max(0, game.extraLifeAt - game.score);
   ui.waveTime.textContent = `${Math.ceil(game.waveClock)}s`;
@@ -328,10 +462,10 @@ function update(dt) {
 
   if (game.waveClock < 6) {
     ui.statusTip.textContent = "Final seconds! Enemies are escaping—finish them before they break away.";
-  } else if (game.escapedThisWave > 6) {
-    ui.statusTip.textContent = "Many invaders escaped this wave. Start firing earlier during entry formations.";
+  } else if (p.probes.length) {
+    ui.statusTip.textContent = "Probe wing online: support ships ghost your path and fire automatically.";
   } else {
-    ui.statusTip.textContent = "Baddies enter, attack in arcs/circles, then leave—focus fire before the timer expires.";
+    ui.statusTip.textContent = "Collect 🛰️ Probe Cores to deploy invulnerable Gradius-style option shooters.";
   }
 }
 
@@ -362,17 +496,27 @@ function drawShip(x, y, color, rotation = 0, scale = 1) {
 }
 
 function drawParallax() {
-  nebulaLayer.forEach((n) => { ctx.fillStyle = `rgba(120, 70, 190, ${n.alpha})`; ctx.beginPath(); ctx.ellipse(n.x, n.y, n.w, n.h, 0.4, 0, Math.PI * 2); ctx.fill(); });
+  nebulaLayer.forEach((n) => {
+    ctx.fillStyle = `rgba(120, 70, 190, ${n.alpha})`;
+    ctx.beginPath();
+    ctx.ellipse(n.x, n.y, n.w, n.h, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
   planetLayer.forEach((p) => {
-    const g = ctx.createRadialGradient(p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.2, p.x, p.y, p.r);
-    g.addColorStop(0, `hsla(${p.hue}, 75%, 75%, 0.28)`);
-    g.addColorStop(1, `hsla(${p.hue + 40}, 60%, 40%, 0.09)`);
-    ctx.fillStyle = g;
+    const gradient = ctx.createRadialGradient(p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.2, p.x, p.y, p.r);
+    gradient.addColorStop(0, `hsla(${p.hue}, 75%, 75%, 0.28)`);
+    gradient.addColorStop(1, `hsla(${p.hue + 40}, 60%, 40%, 0.09)`);
+    ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
     ctx.fill();
   });
-  stars.forEach((s) => { ctx.fillStyle = "rgba(255,255,255,0.82)"; ctx.fillRect(s.x, s.y, s.size, s.size); });
+
+  stars.forEach((s) => {
+    ctx.fillStyle = "rgba(255,255,255,0.82)";
+    ctx.fillRect(s.x, s.y, s.size, s.size);
+  });
 }
 
 function render() {
@@ -388,25 +532,46 @@ function render() {
   ctx.arc(game.player.x, game.player.y, 22, 0, Math.PI * 2);
   ctx.stroke();
 
-  game.playerBullets.forEach((b) => {
-    if (b.style === "laser") { ctx.fillStyle = "#8ecae6"; ctx.fillRect(b.x - 1, b.y - 10, 2, 18); }
-    else { ctx.fillStyle = b.style === "nova" ? "#ff8fab" : b.style === "spread" ? "#ffe066" : "#9bf6ff"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); }
+  game.player.probes.forEach((probe, index) => {
+    const tint = index === 0 ? "#9bf6ff" : "#bdb2ff";
+    drawShip(probe.x, probe.y, tint, Math.sin(performance.now() * 0.004 + index), 0.7 + probe.level * 0.05);
+    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.beginPath();
+    ctx.arc(probe.x, probe.y, 12 + probe.level * 1.5, 0, Math.PI * 2);
+    ctx.stroke();
   });
 
-  game.enemyBullets.forEach((b) => { ctx.fillStyle = "#ff2a6d"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); });
+  game.playerBullets.forEach((b) => {
+    if (b.style === "laser") {
+      ctx.fillStyle = "#8ecae6";
+      ctx.fillRect(b.x - 1, b.y - 10, 2, 18);
+      return;
+    }
+    ctx.fillStyle = b.style === "probe" ? "#f1fa8c" : b.style === "nova" ? "#ff8fab" : b.style === "spread" ? "#ffe066" : "#9bf6ff";
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  game.enemyBullets.forEach((b) => {
+    ctx.fillStyle = "#ff2a6d";
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
 
   game.enemies.forEach((e) => {
     const color = e.type === "elite" ? "#ff2a6d" : e.type === "zig" ? "#ffaa00" : "#00e5ff";
     drawShip(e.x, e.y, color, e.spin, e.phase === "attack" ? 1.1 : 1);
   });
 
-  const colorMap = { shield: "#8ecae6", rapid: "#ffe066", multishot: "#ffadad", life: "#80ed99", bomb: "#f72585", weapon: "#c77dff" };
-  const iconMap = { shield: "🛡", rapid: "⚡", multishot: "🔱", life: "❤", bomb: "💣", weapon: "🔫" };
+  const colorMap = { shield: "#8ecae6", rapid: "#ffe066", multishot: "#ffadad", life: "#80ed99", bomb: "#f72585", weapon: "#c77dff", probe: "#9bf6ff" };
+  const iconMap = { shield: "🛡", rapid: "⚡", multishot: "🔱", life: "❤", bomb: "💣", weapon: "🔫", probe: "🛰" };
   game.powerUps.forEach((power) => {
     ctx.save();
     ctx.translate(power.x, power.y);
     ctx.rotate(power.t * 2.6);
-    ctx.fillStyle = colorMap[power.kind];
+    ctx.fillStyle = colorMap[power.kind] || "#ffffff";
     ctx.beginPath();
     ctx.arc(0, 0, 12, 0, Math.PI * 2);
     ctx.fill();
@@ -414,6 +579,7 @@ function render() {
     ctx.lineWidth = 2;
     ctx.strokeRect(-9, -9, 18, 18);
     ctx.restore();
+
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 12px Courier New";
     ctx.fillText(iconMap[power.kind] || "?", power.x - 5, power.y + 4);
@@ -445,13 +611,22 @@ ui.saveScoreBtn.addEventListener("click", () => {
 });
 
 window.addEventListener("keydown", (e) => {
-  if (["ArrowLeft", "ArrowRight", " ", "a", "A", "d", "D", "p", "P", "b", "B", "q", "Q", "e", "E", "Enter"].includes(e.key)) e.preventDefault();
-  if ((e.key === "p" || e.key === "P") && running) { paused = !paused; showOverlay(ui.pause, paused); return; }
+  if (["ArrowLeft", "ArrowRight", " ", "a", "A", "d", "D", "p", "P", "b", "B", "q", "Q", "e", "E", "Enter"].includes(e.key)) {
+    e.preventDefault();
+  }
+
+  if ((e.key === "p" || e.key === "P") && running) {
+    paused = !paused;
+    showOverlay(ui.pause, paused);
+    return;
+  }
+
   if (e.key === "Enter" && !running) startGame();
   if (e.key === " " && running && !paused) shoot();
   if ((e.key === "b" || e.key === "B") && running && !paused) detonateBomb();
   if ((e.key === "q" || e.key === "Q") && running && !paused) cycleWeapon(-1);
   if ((e.key === "e" || e.key === "E") && running && !paused) cycleWeapon(1);
+
   keys.add(e.key);
 });
 

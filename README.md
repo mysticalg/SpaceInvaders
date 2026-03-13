@@ -6,7 +6,7 @@ A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure
 
 - Splash screen with controls and one-click start.
 - Fluid movement and shooting at 60fps with `requestAnimationFrame`.
-- Polished retro HUD with score, wave, lives, shield %, active weapon, bombs, enemies left, and next extra life target.
+- Polished retro HUD with score, wave, lives, shield %, active weapon, bombs, probe wing status, enemies left, next extra life target, and wave timer.
 - Multi-layer parallax backdrop with stars, galaxies, and drifting planets.
 - Animated enemies with 360° spin, staged formation entries, and attack patterns (arcs, circles, and sine runs).
 - Wave-window pressure system: each wave has a countdown and surviving enemies fly away when time expires.
@@ -19,6 +19,7 @@ A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure
 - Regenerative shield-energy system that absorbs hits before hull lives are consumed.
 - Colorful animated collectible cores with unique icons and effects.
 - In-game pilot help panel + live strategy tips.
+- Gradius-style probe options that ghost the player path, auto-fire, and can be upgraded with Probe Cores.
 - Multiple enemy classes and formations:
   - Grunt units
   - Zig-zag units
