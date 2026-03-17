@@ -1,0 +1,24 @@
+{
+  "name": "spaceinvaders",
+  "version": "1.0.0",
+  "description": "A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure HTML5, CSS, and JavaScript.",
+  "main": "game.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mysticalg/SpaceInvaders.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mysticalg/SpaceInvaders/issues"
+  },
+  "homepage": "https://github.com/mysticalg/SpaceInvaders#readme",
+  "dependencies": {
+    "playwright": "^1.58.2"
+  }
+}
