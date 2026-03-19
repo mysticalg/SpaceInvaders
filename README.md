@@ -2,6 +2,8 @@
 
 A retro-inspired **Space Invaders / Galaxian-style** arcade game built with pure HTML5, CSS, and JavaScript.
 
+Live page: [mysticalg.github.io/SpaceInvaders](https://mysticalg.github.io/SpaceInvaders/)
+
 ## Features
 
 - Splash screen with controls and one-click start.
@@ -57,3 +59,8 @@ Then open `http://localhost:8080`.
 Scores are stored using `localStorage` key `galaxionRetroHighScoresV1`.
 
 This means scores are retained across page refreshes and browser restarts on the same browser profile.
+
+## Support
+
+If you'd like to support this project, you can buy me a coffee:
+[buymeacoffee.com/dhooksterm](https://buymeacoffee.com/dhooksterm)
